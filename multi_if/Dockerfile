@@ -1,7 +1,7 @@
-FROM slimerl/slime:lastest
+FROM slimerl/slime:latest
 
 WORKDIR /root
 
 COPY install_dependency.sh /root/
 
-RUN bash /root/install_dependency_root.sh
+RUN bash /root/install_dependency.sh

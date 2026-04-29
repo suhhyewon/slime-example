@@ -18,7 +18,7 @@ set -ex
 cd /root/slime
 
 # will prevent ray from buffering stdout/stderr
-export PYTHONBUFFERED=16
+export PYTHONUNBUFFERED=1
 
 NVLINK_COUNT=$(nvidia-smi topo -m 2>/dev/null | grep -o 'NV[0-9][0-9]*' | wc -l)
 if [ "$NVLINK_COUNT" -gt 0 ]; then
@@ -157,11 +157,24 @@ MISC_ARGS=(
    --attention-backend flash
 )
 
+# Vanilla SLIME doesn't define --judge_api_key_path / --base_url in argparse;
+# they live only in multi_if_reward.py, which expects args.judge_api_key_path
+# and args.judge_base_url. The supported route is --custom-config-path <yaml>:
+# SLIME setattrs each key onto args at parse time, so writing them in YAML
+# routes them to the reward function correctly. Note the renamed key
+# (judge_base_url, not base_url) — that was a name mismatch in the original.
+CUSTOM_CFG=${CUSTOM_CFG:-/tmp/multi_if_custom_args.yaml}
+cat > "${CUSTOM_CFG}" <<EOF
+judge_api_key_path: ${API_KEY_PATH}
+judge_base_url: ${BASE_URL}
+verify_helpfulness_rate: ${VERIFY_HELPFULNESS_RATE:-0.0}
+disable_soft_verifiers: ${DISABLE_SOFT_VERIFIERS:-false}
+EOF
+
 CUSTOM_ARGS=(
    --custom-generate-function-path multi_if_generate.generate
    --custom-rm-path multi_if_reward.reward_func
-   --judge_api_key_path ${API_KEY_PATH}
-   --base_url ${BASE_URL}
+   --custom-config-path "${CUSTOM_CFG}"
 )
 
 # launch the master node of ray in container

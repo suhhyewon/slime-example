@@ -4,6 +4,7 @@ import logging
 import asyncio
 import builtins
 import inspect
+import os
 import random
 import re
 import subprocess
@@ -180,7 +181,10 @@ def execute_function(
     return fn(**filtered)
 
 
-WORKER_PATH = "/root/slime/examples/multi_if/user_func_worker.py"
+WORKER_PATH = os.environ.get(
+    "MULTI_IF_WORKER_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_func_worker.py"),
+)
 def execute_function_subprocess(
     func_src: str,
     args: dict[str, Any],
@@ -272,7 +276,8 @@ def evaluate(
     base_url,
     api_key,
     model_name: str = "openai.gpt-oss-20b-1:0",
-    verify_helpfulness_rate: float = 0.0
+    verify_helpfulness_rate: float = 0.0,
+    disable_soft_verifiers: bool = False,
 ) -> list[bool]:
 
     results = []
@@ -323,6 +328,12 @@ def evaluate(
             results.append(answer)
 
         else:
+            if disable_soft_verifiers:
+                # Smoke-test / no-judge mode: treat soft verifiers as pass.
+                # Re-enable by setting disable_soft_verifiers=False and
+                # configuring judge_base_url + judge_api_key(_path).
+                results.append(True)
+                continue
             prompt = [
                 {
                     "role": "user",
@@ -346,7 +357,10 @@ def evaluate(
     return results
 
 
-CONSTRAIN_POOL = load_dataset("yxli2123/verifiable-constraints-1126", split="train")
+CONSTRAIN_POOL = load_dataset(
+    os.environ.get("CONSTRAINT_POOL_NAME", "yxli2123/verifiable-constraints-1126"),
+    split="train",
+)
 INDEXED_CONSTRAIN_POOL = build_id_to_data(CONSTRAIN_POOL, muted=True)
 
 
@@ -368,13 +382,19 @@ async def reward_func(args, sample, **kwargs) -> float:
 
     passed = []
 
-    if args.judge_api_key_path is not None:
-        with open(args.judge_api_key_path, "r", encoding="utf-8") as f:
-            api_key = f.read().strip()
-    elif isinstance(args.judge_api_key, str) is not None:
-        api_key = args.judge_api_key
-    else:
-        raise ValueError("Must provide the API key or a txt that stores it.")
+    disable_soft_verifiers = getattr(args, "disable_soft_verifiers", False)
+    verify_helpfulness_rate = getattr(args, "verify_helpfulness_rate", 0.0)
+    needs_judge = (not disable_soft_verifiers) or (verify_helpfulness_rate > 0.0)
+
+    api_key = None
+    if needs_judge:
+        if getattr(args, "judge_api_key_path", None) is not None:
+            with open(args.judge_api_key_path, "r", encoding="utf-8") as f:
+                api_key = f.read().strip()
+        elif isinstance(getattr(args, "judge_api_key", None), str):
+            api_key = args.judge_api_key
+        else:
+            raise ValueError("Must provide the API key or a txt that stores it.")
 
     # Start to evaluate.
     for resp, ver in zip(response, verifier):
@@ -382,9 +402,10 @@ async def reward_func(args, sample, **kwargs) -> float:
             response=resp,
             verifier=ver,
             constraint_pool=INDEXED_CONSTRAIN_POOL,
-            base_url=args.judge_base_url,
+            base_url=getattr(args, "judge_base_url", None),
             api_key=api_key,
-            verify_helpfulness_rate=args.verify_helpfulness_rate,
+            verify_helpfulness_rate=verify_helpfulness_rate,
+            disable_soft_verifiers=disable_soft_verifiers,
         )
         passed.append(all(turn_passed))
 
