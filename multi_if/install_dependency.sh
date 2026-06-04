@@ -1,4 +1,4 @@
-pip install openai pronouncing epitran langdetect spacy beautifulsoup4 nltk toml datasets --index-url https://pypi.org/simple
+pip install openai pronouncing epitran langdetect spacy beautifulsoup4 nltk toml datasets syllapy emoji --index-url https://pypi.org/simple
 pip install aws_bedrock_token_generator --index-url https://pypi.org/simple
 
 cd ${HOME:-/tmp} || exit

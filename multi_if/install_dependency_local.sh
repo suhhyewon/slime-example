@@ -20,7 +20,7 @@ mkdir -p "${SCRATCH_DIR}/bin" "${SCRATCH_DIR}/build"
 
 # ===================== Python deps =====================
 pip install --index-url https://pypi.org/simple \
-  openai pronouncing epitran langdetect spacy beautifulsoup4 nltk toml datasets
+  openai pronouncing epitran langdetect spacy beautifulsoup4 nltk toml datasets syllapy emoji
 
 # aws_bedrock_token_generator is imported by multi_if_reward.py but only used if
 # the colleague's AWS judge endpoint is targeted. Safe to install for parity.

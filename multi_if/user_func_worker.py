@@ -6,6 +6,13 @@ from typing import Any
 
 
 def main() -> None:
+    # Make verifier_utils importable from the same directory as this worker,
+    # regardless of how the subprocess was launched (PYTHONPATH-free).
+    import os as _os
+    _here = _os.path.dirname(_os.path.abspath(__file__))
+    if _here not in sys.path:
+        sys.path.insert(0, _here)
+
     try:
         payload = json.load(sys.stdin)
         func_src: str = payload["func_src"]

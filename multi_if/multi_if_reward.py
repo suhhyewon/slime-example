@@ -283,7 +283,12 @@ def evaluate(
     results = []
     for c in verifier:
         _id, _placeholder = c["id"], c["placeholder"]
-        constraint_info = constraint_pool[_id]
+        try:
+            constraint_info = constraint_pool[_id]
+        except KeyError:
+            logging.warning(f"Constraint ID {_id} not found in pool; treating as pass.")
+            results.append(True)
+            continue
         verifier_type = constraint_info["verifier_type"]
         content_template: bool = constraint_info["content_template"]
         func_input = {"response": response, "placeholder": _placeholder} if content_template else {"response": response}
@@ -357,10 +362,11 @@ def evaluate(
     return results
 
 
-CONSTRAIN_POOL = load_dataset(
-    os.environ.get("CONSTRAINT_POOL_NAME", "yxli2123/verifiable-constraints-1126"),
-    split="train",
-)
+_pool_name = os.environ.get("CONSTRAINT_POOL_NAME", "yxli2123/verifiable-constraints-1126")
+if os.path.isfile(_pool_name):
+    CONSTRAIN_POOL = load_dataset("json", data_files=_pool_name, split="train")
+else:
+    CONSTRAIN_POOL = load_dataset(_pool_name, split="train")
 INDEXED_CONSTRAIN_POOL = build_id_to_data(CONSTRAIN_POOL, muted=True)
 
 

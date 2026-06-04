@@ -147,7 +147,10 @@ EOF
 # Pre-cache the constraint pool and our HF data so workers don't re-download.
 # Constraint pool dataset is overridable via env var (we added the indirection
 # in multi_if_reward.py).
-export CONSTRAINT_POOL_NAME=${CONSTRAINT_POOL_NAME:-yxli2123/verifiable-constraints-1126}
+# v2 verifiers: IFBench-aligned regenerated hard constraints.
+# Override with a HF repo name (e.g. yxli2123/verifiable-constraints-v2) once published.
+VERIFIERS_V2_DEFAULT="$(cd "${SCRIPT_DIR}/../../EvolvingSynData/output" 2>/dev/null && pwd)/verifiers_v2.jsonl"
+export CONSTRAINT_POOL_NAME=${CONSTRAINT_POOL_NAME:-${VERIFIERS_V2_DEFAULT}}
 
 # ===================== Experiment configs =====================
 PROJ_NAME=${PROJ_NAME:-qwen3-4b-mt-smoke}
